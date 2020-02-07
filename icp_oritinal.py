@@ -23,8 +23,8 @@ if (len(argv) != 3):
     quit()
 
 # Check if pts files exist
-file1 = argv[1] #source points(dataset)
-file2 = argv[2] #target points(dataset)
+file1 = argv[1]
+file2 = argv[2]
 if (not os.path.isfile(file1)):
     print("Error: Could not find .pts file: " + file1)
     quit()
@@ -53,10 +53,8 @@ if (not os.path.isfile(output_file2_xf)):
         print("Warning: Could not find .xf file: " + file2_xf)
         print("Defaulting to 4x4 identity matrix...")
         M2 = np.identity(4)
-        print('option1')
     else:
         M2 = load_xf(file2_xf)
-        print('option2')        
 else:
     print("Using the transformation {} as target".format(output_file2_xf))
     M2 = load_xf(output_file2_xf)
@@ -70,7 +68,6 @@ for p in pts2:
 # ICP iteration (until improvement is less than 0.01%)
 print("Starting iteration...")
 ratio = 0.0
-
 M2_inverse = M2.I
 pts_index = [i for i in range(len(pts1))]
 count = 0

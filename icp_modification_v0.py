@@ -8,6 +8,7 @@
 #          the first file with those in the second. Expects *.xf to exist for
 #          each file as well. Output appears in ./results
 
+import open3d as o3d
 import os
 import numpy as np
 from sys import argv
@@ -17,24 +18,52 @@ from lib.utils import *
 from lib.kdtree import KdTree
 
 # Check usage
-if (len(argv) != 3):
-    print("Usage Error: icp.py takes additional two arguments.\n"
-            "Proper usage is \"icp.py file1.pts file2.pts\"")
+if (len(argv) != 6):
+    print("number of arguments: ", len(argv))
+    print("Usage Error: icp.py takes additional four arguments.\n"
+            "Proper usage is \"icp.py file1.pts file2.pts NP SC NS\"")
     quit()
 
 # Check if pts files exist
 file1 = argv[1] #source points(dataset)
 file2 = argv[2] #target points(dataset)
-if (not os.path.isfile(file1)):
-    print("Error: Could not find .pts file: " + file1)
-    quit()
-if (not os.path.isfile(file2)):
-    print("Error: Could not find .pts file: " + file2)
+NP = argv[3] #number of samples in the computation
+SC = argv[4] #scaling number, once every SC points will be sampled for use in case there are too many points in the point cloud 
+NS = argv[5] #number of sample, instead of SC
+#file1 = '/home/atom/Workplace/reactor_head_scan/scan01/scan01.ply'
+#file2 = '/home/atom/Workplace/reactor_head_scan/scan02/scan02.ply'
+
+#check file type
+file1_type = file1.split('.')[-1]
+file2_type = file2.split('.')[-1]
+
+if file1_type == 'pts' and file2_type == 'pts':
+    if (not os.path.isfile(file1)):
+        print("Error: Could not find .pts file: " + file1)
+        quit()
+    if (not os.path.isfile(file2)):
+        print("Error: Could not find .pts file: " + file2)
+        quit()
+    # Load pts
+    pts1 = load_pts(file1)
+    pts2 = load_pts(file2)
+elif file1_type == 'ply' and file2_type == 'ply':
+    if (not os.path.isfile(file1)):
+        print("Error: Could not find .ply file: " + file1)
+        quit()
+    if (not os.path.isfile(file2)):
+        print("Error: Could not find .ply file: " + file2)
+        quit()
+    # Load pts
+    pts1 = load_ply(file1,int(SC),int(NS))
+    pts2 = load_ply_shift(file2,int(SC),int(NS))
+elif file1_type != file2_type:
+    print("Error: Input file types are different! ")
     quit()
 
-# Load pts
-pts1 = load_pts(file1)
-pts2 = load_pts(file2)
+elif file1_type != 'pts' or file1_type != 'ply' or file2_type != 'pts' or file2_type != 'ply':
+    print("Unknown input file type: use either pts or ply only")
+    quit()
 
 # Check if xf files exist
 file1_xf = '.'.join(file1.split('.')[:-1]) + '.xf'
@@ -43,7 +72,9 @@ if (not os.path.isfile(file1_xf)):
     print("Warning: Could not find .xf file: " + file1_xf)
     print("Defaulting to 4x4 identity matrix...")
     M1 = np.identity(4)
+    M1 = M1.astype('float')
 else:
+    print('xf file found')
     M1 = load_xf(file1_xf)
 
 # NB need to load "output" file2.xf if avaliable or will overwrite previous work
@@ -53,10 +84,12 @@ if (not os.path.isfile(output_file2_xf)):
         print("Warning: Could not find .xf file: " + file2_xf)
         print("Defaulting to 4x4 identity matrix...")
         M2 = np.identity(4)
-        print('option1')
+        #M2 = Point(M2)
+        M2 = M2.astype('float')
+        print('option1: xf file for file2 not found')
     else:
         M2 = load_xf(file2_xf)
-        print('option2')        
+        print('option2: xf file for file2 found')
 else:
     print("Using the transformation {} as target".format(output_file2_xf))
     M2 = load_xf(output_file2_xf)
@@ -71,14 +104,15 @@ for p in pts2:
 print("Starting iteration...")
 ratio = 0.0
 
-M2_inverse = M2.I
+M2_inverse = np.linalg.inv(M2) #M2.I
 pts_index = [i for i in range(len(pts1))]
 count = 0
 while (ratio < 0.9999):
-    # Randomly pick 1000 points
+    # Randomly pick NP points
     shuffle(pts_index)
     # Apply M1 and the inverse of M2
-    p = [pts1[i].copy().transform(M1).transform(M2_inverse) for i in pts_index[:1000]]
+    #print(NP)
+    p = [pts1[i].copy().transform(M1).transform(M2_inverse) for i in pts_index[:int(NP)]]
     q = [kdtree.nearest(point) for point in p]
 
     # Compute point to plane distances
@@ -122,6 +156,8 @@ while (ratio < 0.9999):
         dist_sum += abs(np.subtract(p.s, q.s).dot(q.n))
     new_mean = dist_sum/len(point_pairs)
     count += 1
+    print("old mean: ", old_mean)
+    print("new mean: ", new_mean)
     ratio = new_mean / old_mean
 
     # Update M1 iff we improved (otherwise, but NOT only then, we will terminate)
@@ -135,9 +171,12 @@ while (ratio < 0.9999):
 print("Terminated successfully with a sampled mean distance of {}".format(new_mean))
 
 # Write results to file
-output_file1_pts = './output/' + file1.split('/')[-1]
+
+#output_file1_pts = './output/' + file1.split('/')[-1]
+output_file1_pts = './output/' + file1.split('/')[-1].split('.')[-2] + '.pts'
 output_file1_xf = './output/' + file1_xf.split('/')[-1]
-output_file2_pts = './output/' + file2.split('/')[-1]
+#output_file2_pts = './output/' + file2.split('/')[-1]
+output_file2_pts = './output/' + file2.split('/')[-1].split('.')[-2] + '.pts'
 output_file2_xf = './output/' + file2_xf.split('/')[-1]
 write_pts(output_file1_pts, pts1)
 write_pts(output_file2_pts, pts2)
