@@ -16,6 +16,10 @@ from os.path import expanduser
 
 from lib.utils import *
 
+import seaborn as sns
+import sklearn.datasets as data
+import hdbscan
+
 def draw_registration_result(source, target, transformation):
     source_temp = copy.deepcopy(source)
     target_temp = copy.deepcopy(target)
@@ -55,6 +59,25 @@ def preprocess_point_cloud(pcd, voxel_size):
         o3d.geometry.KDTreeSearchParamHybrid(radius=radius_feature, max_nn=100))
     return pcd_down, pcd_fpfh
 
+def preprocess_point_cloud_wo_downsampling(pcd, voxel_size):
+    #print(":: Downsample with a voxel size %.3f." % voxel_size)
+    #pcd_down = pcd.voxel_down_sample(voxel_size)
+    #print("downsample size:", len(pcd_down.points))
+
+    radius_normal = voxel_size * 5
+    #radius_normal = voxel_size * 3
+    print(":: Estimate normal with search radius %.3f." % radius_normal)
+    pcd.estimate_normals(
+        o3d.geometry.KDTreeSearchParamHybrid(radius=radius_normal, max_nn=30))
+
+    #radius_feature = voxel_size * 5
+    radius_feature = voxel_size * 5
+    print(":: Compute FPFH feature with search radius %.3f." % radius_feature)
+    pcd_fpfh = o3d.registration.compute_fpfh_feature(
+        pcd,
+        o3d.geometry.KDTreeSearchParamHybrid(radius=radius_feature, max_nn=100))
+    return pcd, pcd_fpfh
+
 
 def prepare_dataset(voxel_size):
     home = expanduser("~")
@@ -73,6 +96,8 @@ def prepare_dataset(voxel_size):
 
     source_down, source_fpfh = preprocess_point_cloud(source, voxel_size)
     target_down, target_fpfh = preprocess_point_cloud(target, voxel_size)
+    #source_feature_data = source_fpfh.data[:,0:100]
+    #target_feature_data = target_fpfh.data[:,0:100]
     print("source_down.points data type: ",type(source_down.points))
     print("source_down.points data shape: ",len(source_down.points))
     print("source_fpfh data type: ",type(source_fpfh.data))
@@ -142,77 +167,122 @@ def translation_only_transformation(x,y,z):
     #trans[3,0:3] = translation_vector
     return trans    
 
+def display_inlier_outlier(cloud, ind):
+    inlier_cloud = cloud.select_down_sample(ind)
+    outlier_cloud = cloud.select_down_sample(ind, invert=True)
+
+    print("Showing outliers (red) and inliers (gray): ")
+    outlier_cloud.paint_uniform_color([1, 0, 0])
+    inlier_cloud.paint_uniform_color([0.8, 0.8, 0.8])
+    o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud])
+
+def remove_near_origin_points(pcd,distance_criteria):
+    #pcd = o3d.io.read_point_cloud(point_cloud,format='ply') 
+    ind = []
+    #cl = o3d.geometry.PointCloud()
+
+    for i in range(len(pcd.points)):
+        if np.linalg.norm(pcd.points[i],ord=None) > distance_criteria:
+            #xyz = np.asarray(pcd.points[i])
+            #print(i,' ',xyz)
+            #print(i,' ',np.sqrt(xyz[0]**2 + xyz[1]**2 + xyz[2]**2), np.linalg.norm(pcd.points[i],ord=None))
+            #print(np.sqrt(pcd.points[i,0]**2 + pcd.points[i,1]**2 + pcd.points[i,2]**2), np.linalg.norm(pcd.points[i],ord=None) )
+            #print(i)
+            ind.append(i)
+    cl = pcd.select_down_sample(ind)
+
+    return cl, ind
+
+def display_inlier_outlier(cloud, ind):
+    inlier_cloud = cloud.select_down_sample(ind)
+    outlier_cloud = cloud.select_down_sample(ind, invert=True)
+
+    print("Showing outliers (red) and inliers (gray): ")
+    outlier_cloud.paint_uniform_color([1, 0, 0])
+    inlier_cloud.paint_uniform_color([0.8, 0.8, 0.8])
+    o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud])
 
 if __name__ == "__main__":
-    method = argv[1]    
-    #voxel_size = 0.05  # means 5cm for the dataset -> original example
-    voxel_size = 2  # means 2mm for the dataset -> reactor head model scan
-    start = time.time()
-    source, target, source_down, target_down, source_fpfh, target_fpfh = \
-            prepare_dataset(voxel_size)
-    print("Data preparation took %.3f sec.\n" % (time.time() - start))
-    #print(type(source_down.data))
-    #print(source_down.data.shape)
-    #print(type(source_fpfh.data))
-    #print(source_fpfh.data.shape)
-    print("Initial registration starts")
-    if method == 'global':
-        start = time.time()
-        result = execute_global_registration(source_down, target_down,
-                                                source_fpfh, target_fpfh,
-                                                voxel_size)
-    elif method == 'fast':
-        start = time.time()
-        result = execute_fast_global_registration(source_down, target_down,
-                                                source_fpfh, target_fpfh,
-                                                voxel_size)
-    else:
-        print('unknown icp method!')
-        quit()
-    print("Initial registration ended")    
-    print(method + " registration took %.3f sec.\n" % (time.time() - start))
-    print(result)
-    draw_registration_result(source_down, target_down,
-                             result.transformation)
-    print("Randomization starts") 
-    for i in range(10):
-        print("Randomization step : ",i)
-        #rand_rotation = rand_rotation_matrix_v2(deflection=0.0, randnums=None)
-        #rand_rotation = rand_rotation_matrix_v3(deflection=0.0001)
-        #rand_rotation = rand_rotation_matrix_v4(3)
-        del_x,del_y,del_z = np.random.uniform(size=(3,)) 
-        #print(np.random.uniform(size=(3,1)))
-        #print(rand_rotation)
-        #print(type(rand_rotation))
-        #temp_transformation = rotation_only_transformation(rand_rotation)
-        temp_transformation = translation_only_transformation(30.0*(del_x-0.5),30.0*(del_y-0.5),50.0*(del_z-0.5))
-        np.set_printoptions(precision=3)
-        print(temp_transformation)
-        print(result.transformation)
-  
-        #tem = np.dot(result.transformation,temp_transformation)
-        #print('translation applied')
-        #print(tem)
-        tem = np.dot(temp_transformation, result.transformation)
-        print('translation applied')
-        print(tem)
-        #print(np.dot(result.transformation,temp_transformation))
-        #print(np.linalg.det(tem))
-        #trans_rand = result.transformation + 
-        
-        temp_result = copy.deepcopy(result)
-        temp_result.transformation = tem
-        draw_registration_result_downsample(source, target, temp_result.transformation, 3)
-        #temp_result.transformation = temp_result.transformation + temp_transformation
-        print('refinement starts')
-        temp_result_icp = refine_registration(source, target, source_fpfh, target_fpfh,
-                                     voxel_size*1.5, temp_result)
-        draw_registration_result_downsample(source, target, temp_result_icp.transformation, 2)
 
-    #source_temp.transform(transformation)
+    home = expanduser("~")
+    print("Load a ply point cloud, print it, and render it")
+    #pcd = o3d.io.read_point_cloud("../../TestData/ICP/cloud_bin_2.pcd")
+    voxel_size = 2
+
+    pcd_data = 'scan03'
+    pcd = o3d.io.read_point_cloud(home+'/Workplace/reactor_head_scan/'+pcd_data+'/'+pcd_data+'.ply',format='ply')    
+    #o3d.visualization.draw_geometries([pcd])
+    print("Original data size: ", len(pcd.points))
+
+    print("Downsample the point cloud with a voxel size of ",voxel_size)
+    #voxel_down_pcd = pcd.voxel_down_sample(voxel_size*2.0)
+    voxel_down_pcd = pcd.voxel_down_sample(voxel_size)
+    print("Down-sampled data size: ", len(voxel_down_pcd.points))
+    #o3d.visualization.draw_geometries([voxel_down_pcd])
+
+    #print("Every 5th points are selected")
+    #uni_down_pcd = pcd.uniform_down_sample(every_k_points=5)
+    #o3d.visualization.draw_geometries([uni_down_pcd])
+
+    #remove points near origin
+    print("Near-origin points removal")
+    distance_criteria = 30 #30mm from the origin (0,0,0)
+    near_origin_removed_pcd, ind_nor = remove_near_origin_points(voxel_down_pcd,distance_criteria)
+    #display_inlier_outlier(voxel_down_pcd, ind_nor)
+
+    print("Statistical oulier removal")
+    statistical_outlier_removed_pcd, ind_sta = near_origin_removed_pcd.remove_statistical_outlier(nb_neighbors=30,
+                                                         std_ratio=1.0)
+    #cl, ind = voxel_down_pcd.remove_statistical_outlier(nb_neighbors=20,
+    #                                                    std_ratio=2.0)    
+    
+    #cl = selected points (inlier, noise removed)
+    #ind = index of selected points
+    #print(cl) --> geometry::PointCloud with 25863 points.
+    #print(len(ind)) --> 25863
+    #display_inlier_outlier(near_origin_removed_pcd, ind)
+    #display_inlier_outlier(voxel_down_pcd, ind)
+
+    print("Radius oulier removal")
+    radius_outlier_removed_pcd, ind_rad = statistical_outlier_removed_pcd.remove_radius_outlier(nb_points=16, radius=voxel_size*6.0)
+    print("Outlier removed data size: ", len(radius_outlier_removed_pcd.points))
+    #display_inlier_outlier(near_origin_removed_pcd, ind)
+    
+    o3d.visualization.draw_geometries([radius_outlier_removed_pcd])
+    
+    #cl, ind = voxel_down_pcd.remove_radius_outlier(nb_points=16, radius=voxel_size*2.0)
+    #display_inlier_outlier(voxel_down_pcd, ind)
+
+    #voxel_size = 0.05  # means 5cm for the dataset -> original example
+    #voxel_size = 2  # means 2mm for the dataset -> reactor head model scan
     #start = time.time()
-    #result_icp = refine_registration(source, target, source_fpfh, target_fpfh,
-    #                                 voxel_size, result)
-    #print("Refinement took %.3f sec.\n" % (time.time() - start))
-    #print(result_icp)
-    #draw_registration_result_downsample(source, target, result_icp.transformation, 2)
+    #pcd_data_down, pcd_fpfh = preprocess_point_cloud(radius_outlier_removed_pcd, voxel_size)
+    pcd_data_down, pcd_fpfh = preprocess_point_cloud_wo_downsampling(radius_outlier_removed_pcd, voxel_size)
+    print("Feature-sampled data size: ", len(pcd_data_down.points))
+    #print("Data preparation took %.3f sec.\n" % (time.time() - start))
+    plt.figure(num=1)
+    #plt.imshow(pcd_fpfh.data[:,0:100].T, cmap="gray")
+    plt.imshow(pcd_fpfh.data[:,0:100], cmap="gray")
+    print("test imshow")
+    
+    #source, target, source_down, target_down, source_fpfh, target_fpfh = \
+    #        prepare_dataset(voxel_size)
+    #clusterer = hdbscan.HDBSCAN(min_cluster_size=250, gen_min_span_tree=True)
+    
+    clusterer = hdbscan.HDBSCAN(min_cluster_size=250, prediction_data=True)
+    clusterer.fit(pcd_fpfh.data.T)
+
+    #plt.figure(num=2)
+    #clusterer.minimum_spanning_tree_.plot(edge_cmap='viridis', edge_alpha=0.6, node_size=10, edge_linewidth=2)
+    #plt.show()
+
+    #plt.figure(num=2)
+    #clusterer.single_linkage_tree_.plot(cmap='viridis', colorbar=True)
+    #plt.show()
+
+    plt.figure(num=2)
+    #clusterer.condensed_tree_.plot()
+    clusterer.condensed_tree_.plot(select_clusters=True, selection_palette=sns.color_palette())
+    plt.show()
+    
+
