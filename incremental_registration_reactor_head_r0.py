@@ -9,7 +9,7 @@ import copy
 import open3d as o3d
 from os.path import expanduser
 from os.path import isfile
-
+import color_dictionary as cd
 
 def rotation_only_transformation(rotation_matrix):
     trans =  np.asarray([[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0],
@@ -142,9 +142,6 @@ def pairwise_manual_registration(source_pcd_name, target_pcd_name, distance_crit
         o3d.io.write_point_cloud('./pairwise_registration/'+target_pcd_data+'_clean_downsampled.ply', source)
 
 
-   
-
-
 def demo_manual_registration():
 
     print("Demo for manual ICP")
@@ -195,10 +192,93 @@ def demo_manual_registration():
     #o3d.io.write_point_cloud(source_pcd_data+'_clean_downsampled.ply', source)
     #o3d.io.write_point_cloud(target_pcd_data+'_clean_downsampled.ply', source)
     #np.savez_compressed('transformations',initial_transformation = trans_init, refined_transformation =  reg_p2p.transformation )
+
+def load_pairwise_registration(source_name, target_name, source_color, target_color):
+    home = expanduser("~")
+    source_pcd_data = source_name
+    #temp_source = o3d.io.read_point_cloud(home+'/Workplace/reactor_head_scan/'+source_pcd_data+'/'+source_pcd_data+'.ply',format='ply')
+    temp_source = o3d.io.read_point_cloud(home+'/Workplace/Point-Cloud-Registration/pairwise_registration/'+source_pcd_data+'_clean_downsampled.ply',format='ply')
+    temp_source.paint_uniform_color(source_color)
+
+    target_pcd_data = target_name    
+    #temp_target = o3d.io.read_point_cloud(home+'/Workplace/reactor_head_scan/'+target_pcd_data+'/'+target_pcd_data+'.ply',format='ply')
+    temp_target = o3d.io.read_point_cloud(home+'/Workplace/Point-Cloud-Registration/pairwise_registration/'+target_pcd_data+'_clean_downsampled.ply',format='ply')
+    temp_target.paint_uniform_color(target_color)
+    transformation = np.load('./pairwise_registration/'+source_pcd_data+'_'+target_pcd_data+'_transformations.npz')
+
+    temp_source.transform(transformation['refined_transformation'])
+
+    return temp_source, temp_target
+
+def load_pairwise_registration_simple(source_name, target_name, source_color, target_color):
+    home = expanduser("~")
+    source_pcd_data = source_name
+    temp_source = o3d.io.read_point_cloud(home+'/Workplace/reactor_head_scan/'+source_pcd_data+'/'+source_pcd_data+'.ply',format='ply')
+    #temp_source = o3d.io.read_point_cloud(home+'/Workplace/Point-Cloud-Registration/pairwise_registration/'+source_pcd_data+'_clean_downsampled.ply',format='ply')
+    temp_source.paint_uniform_color(source_color)
+
+    target_pcd_data = target_name    
+    temp_target = o3d.io.read_point_cloud(home+'/Workplace/reactor_head_scan/'+target_pcd_data+'/'+target_pcd_data+'.ply',format='ply')
+    #temp_target = o3d.io.read_point_cloud(home+'/Workplace/Point-Cloud-Registration/pairwise_registration/'+target_pcd_data+'_clean_downsampled.ply',format='ply')
+    temp_target.paint_uniform_color(target_color)
+    
+    transformation = np.load('./pairwise_registration/'+source_pcd_data+'_'+target_pcd_data+'_transformations.npz')
+
+    #temp_source.transform(transformation['refined_transformation'])
+
+    return temp_source, temp_target, transformation['refined_transformation']    
+
+def merge_incremental_registration(source_pcd, target_pcd, source_to_target_transformation):
+    #temp_pcd = []
+    #temp_pcd.append(target_pcd)
+    #print(source_to_target_transformation)
+    
+    #temp_pcd.append(source_pcd.transform(source_to_target_transformation))
+    temp_pcd = source_pcd.transform(source_to_target_transformation)
+    #return temp_pcd
+    return temp_pcd + target_pcd
+
+def merge_pcd(source_pcd, target_pcd):
+    #temp_pcd = []
+    #temp_pcd.append(target_pcd)
+    #temp_pcd.append(source_pcd)
+
+    #return temp_pcd
+    return source_pcd + target_pcd
+
+
 if __name__ == "__main__":
     #demo_crop_geometry()
     #demo_manual_registration()
 
+
+    #home = expanduser("~")
+    #source_pcd_data = 'scan01'
+    ##temp_source = o3d.io.read_point_cloud(home+'/Workplace/reactor_head_scan/'+source_pcd_data+'/'+source_pcd_data+'.ply',format='ply')
+    #temp_source = o3d.io.read_point_cloud(home+'/Workplace/Point-Cloud-Registration/pairwise_registration/'+source_pcd_data+'_clean_downsampled.ply',format='ply')
+    #temp_source.paint_uniform_color(cd.ALICEBLUE.as_ndarray())
+
+    #target_pcd_data = 'scan02'    
+    ##temp_target = o3d.io.read_point_cloud(home+'/Workplace/reactor_head_scan/'+target_pcd_data+'/'+target_pcd_data+'.ply',format='ply')
+    #temp_target = o3d.io.read_point_cloud(home+'/Workplace/Point-Cloud-Registration/pairwise_registration/'+target_pcd_data+'_clean_downsampled.ply',format='ply')
+    #temp_target.paint_uniform_color(cd.RED1.as_ndarray())
+    #transformation = np.load('./pairwise_registration/'+source_pcd_data+'_'+target_pcd_data+'_transformations.npz')
+
+    #temp_source.transform(transformation['refined_transformation'])
+
+
+    #registered_scan01, scan02 = load_pairwise_registration('scan01','scan02',cd.RED.as_ndarray(),cd.LIME.as_ndarray())
+    scan01, scan02, tf_scan01_to_scan02 = load_pairwise_registration_simple('scan01','scan02',cd.RED1.as_ndarray(),cd.LIMEGREEN.as_ndarray())
+    scan01_scan02 = merge_incremental_registration(scan01, scan02, tf_scan01_to_scan02)
+
+    scan02, scan03, tf_scan02_to_scan03 = load_pairwise_registration_simple('scan02','scan03',cd.LIMEGREEN.as_ndarray(),cd.BLUE.as_ndarray())
+    scan01_scan02_scan03 = merge_incremental_registration(scan01_scan02, scan03, tf_scan02_to_scan03)
+    
+    o3d.visualization.draw_geometries([scan01,scan02])
+    draw_registration_result(scan01, scan02, tf_scan01_to_scan02)
+    o3d.visualization.draw_geometries([scan01_scan02])
+    o3d.visualization.draw_geometries([scan01_scan02_scan03])
+    #print(cd.ALICEBLUE.as_ndarray())
     #pairwise_manual_registration(source_pcd_name='scan01', target_pcd_name='scan02', distance_criteria=40, voxel_size=1, threshold=1.5)
     #pairwise_manual_registration(source_pcd_name='scan02', target_pcd_name='scan03', distance_criteria=40, voxel_size=1, threshold=1.5)
     #pairwise_manual_registration(source_pcd_name='scan03', target_pcd_name='scan04', distance_criteria=40, voxel_size=1, threshold=1.5) 
@@ -207,7 +287,7 @@ if __name__ == "__main__":
     #pairwise_manual_registration(source_pcd_name='scan05', target_pcd_name='scan06', distance_criteria=40, voxel_size=1, threshold=1.5) 
     #pairwise_manual_registration(source_pcd_name='scan06', target_pcd_name='scan07', distance_criteria=40, voxel_size=1, threshold=1.0) 
     #pairwise_manual_registration(source_pcd_name='scan07', target_pcd_name='scan08', distance_criteria=40, voxel_size=1, threshold=1.5) 
-    pairwise_manual_registration(source_pcd_name='scan08', target_pcd_name='scan09', distance_criteria=40, voxel_size=1, threshold=1.5) 
+    #pairwise_manual_registration(source_pcd_name='scan08', target_pcd_name='scan09', distance_criteria=40, voxel_size=1, threshold=1.5) 
     #pairwise_manual_registration(source_pcd_name='scan09', target_pcd_name='scan10', distance_criteria=40, voxel_size=1, threshold=1.5)
     #pairwise_manual_registration(source_pcd_name='scan10', target_pcd_name='scan11', distance_criteria=40, voxel_size=1, threshold=1.5)
     #pairwise_manual_registration(source_pcd_name='scan11', target_pcd_name='scan12', distance_criteria=40, voxel_size=1, threshold=1.5)
