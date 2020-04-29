@@ -474,7 +474,8 @@ if __name__ == "__main__":
 
 
     #o3d.visualization.draw_geometries([my_dict['scan02_pcd']])
-
+    
+    after_registration = [my_dict['scan02_pcd'], my_dict['scan01_pcd'].transform(tf_01_02)]
     #o3d.visualization.draw_geometries([my_dict['scan02_pcd'], my_dict['scan01_pcd'].transform(tf_01_02)])
 
     
@@ -503,7 +504,8 @@ if __name__ == "__main__":
         ,apply_transformations(my_dict['scan01_pcd'],[tf_01_02,tf_02_03,tf_03_04,tf_04_05,tf_05_06,tf_06_07])])
     '''
     
-    o3d.visualization.draw_geometries([my_dict['scan10_pcd'], my_dict['scan09_pcd'].transform(tf_09_10)
+    '''
+    after_registration = [my_dict['scan10_pcd'], my_dict['scan09_pcd'].transform(tf_09_10)
         ,apply_transformations(my_dict['scan08_pcd'],[tf_08_09,tf_09_10])
         ,apply_transformations(my_dict['scan07_pcd'],[tf_07_08,tf_08_09,tf_09_10])
         ,apply_transformations(my_dict['scan06_pcd'],[tf_06_07,tf_07_08,tf_08_09,tf_09_10])
@@ -511,7 +513,9 @@ if __name__ == "__main__":
         ,apply_transformations(my_dict['scan04_pcd'],[tf_04_05,tf_05_06,tf_06_07,tf_07_08,tf_08_09,tf_09_10])
         ,apply_transformations(my_dict['scan03_pcd'],[tf_03_04,tf_04_05,tf_05_06,tf_06_07,tf_07_08,tf_08_09,tf_09_10])
         ,apply_transformations(my_dict['scan02_pcd'],[tf_02_03,tf_03_04,tf_04_05,tf_05_06,tf_06_07,tf_07_08,tf_08_09,tf_09_10])
-        ,apply_transformations(my_dict['scan01_pcd'],[tf_01_02,tf_02_03,tf_03_04,tf_04_05,tf_05_06,tf_06_07,tf_07_08,tf_08_09,tf_09_10])])
+        ,apply_transformations(my_dict['scan01_pcd'],[tf_01_02,tf_02_03,tf_03_04,tf_04_05,tf_05_06,tf_06_07,tf_07_08,tf_08_09,tf_09_10])]
+    '''
+
     
     '''
     o3d.visualization.draw_geometries([my_dict['scan11_pcd'], my_dict['scan10_pcd'].transform(tf_10_11)
@@ -537,11 +541,13 @@ if __name__ == "__main__":
         ,apply_transformations(my_dict['scan03_pcd'],[tf_03_04,tf_04_05,tf_05_06,tf_06_07,tf_07_08,tf_08_09,tf_09_10,tf_10_11,tf_11_12])
         ,apply_transformations(my_dict['scan02_pcd'],[tf_02_03,tf_03_04,tf_04_05,tf_05_06,tf_06_07,tf_07_08,tf_08_09,tf_09_10,tf_10_11,tf_11_12])
         ,apply_transformations(my_dict['scan01_pcd'],[tf_01_02,tf_02_03,tf_03_04,tf_04_05,tf_05_06,tf_06_07,tf_07_08,tf_08_09,tf_09_10,tf_10_11,tf_11_12])])  
-    
+    '''
     
     #o3d.visualization.draw_geometries([scan03_pcd, scan02_pcd.transformation(tf_02_03), apply_transformations(scan01_pcd,[tf_01_02,tf_02_03])])
 
-    o3d.visualization.draw_geometries([my_dict['scan15_pcd'],my_dict['scan14_pcd'].transform(tf_14_15)
+
+    '''
+    after_registration = [my_dict['scan15_pcd'],my_dict['scan14_pcd'].transform(tf_14_15)
         ,apply_transformations(my_dict['scan13_pcd'],[tf_13_14,tf_14_15])        
         ,apply_transformations(my_dict['scan12_pcd'],[tf_12_13,tf_13_14,tf_14_15])
         ,apply_transformations(my_dict['scan11_pcd'],[tf_11_12,tf_12_13,tf_13_14,tf_14_15])
@@ -554,8 +560,16 @@ if __name__ == "__main__":
         ,apply_transformations(my_dict['scan04_pcd'],[tf_04_05,tf_05_06,tf_06_07,tf_07_08,tf_08_09,tf_09_10,tf_10_11,tf_11_12,tf_12_13,tf_13_14,tf_14_15]) 
         ,apply_transformations(my_dict['scan03_pcd'],[tf_03_04,tf_04_05,tf_05_06,tf_06_07,tf_07_08,tf_08_09,tf_09_10,tf_10_11,tf_11_12,tf_12_13,tf_13_14,tf_14_15]) 
         ,apply_transformations(my_dict['scan02_pcd'],[tf_02_03,tf_03_04,tf_04_05,tf_05_06,tf_06_07,tf_07_08,tf_08_09,tf_09_10,tf_10_11,tf_11_12,tf_12_13,tf_13_14,tf_14_15]) 
-        ,apply_transformations(my_dict['scan01_pcd'],[tf_01_02,tf_02_03,tf_03_04,tf_04_05,tf_05_06,tf_06_07,tf_07_08,tf_08_09,tf_09_10,tf_10_11,tf_11_12,tf_12_13,tf_13_14,tf_14_15])]) 
-    '''  
+        ,apply_transformations(my_dict['scan01_pcd'],[tf_01_02,tf_02_03,tf_03_04,tf_04_05,tf_05_06,tf_06_07,tf_07_08,tf_08_09,tf_09_10,tf_10_11,tf_11_12,tf_12_13,tf_13_14,tf_14_15])]
+    
+    '''
+    o3d.visualization.draw_geometries(after_registration)
+
+    after_registration_pcd = o3d.geometry.PointCloud()
+    for pcd in after_registration:
+        after_registration_pcd += pcd
+
+    o3d.io.write_point_cloud('./incremental_registration/after_registration_two_pcds.ply', after_registration_pcd)
 
     '''
     pcd_name.paint_uniform_color(cd.YELLOW1.as_ndarray())

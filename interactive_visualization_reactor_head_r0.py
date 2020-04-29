@@ -153,11 +153,11 @@ def demo_manual_registration():
     home = expanduser("~")
     distance_criteria = 40
     voxel_size = 1
-    source_pcd_data = 'scan08'
+    source_pcd_data = 'scan07'
     temp_source = o3d.io.read_point_cloud(home+'/Workplace/reactor_head_scan/'+source_pcd_data+'/'+source_pcd_data+'.ply',format='ply')
     source, ind = downsample_remove_outlier(temp_source, distance_criteria,voxel_size)  
 
-    target_pcd_data = 'scan09'    
+    target_pcd_data = 'scan08'    
     temp_target = o3d.io.read_point_cloud(home+'/Workplace/reactor_head_scan/'+target_pcd_data+'/'+target_pcd_data+'.ply',format='ply')
     target, ind = downsample_remove_outlier(temp_target, distance_criteria,voxel_size)      
     #source = o3d.io.read_point_cloud("../Open3D/examples/TestData/ICP/cloud_bin_0.pcd")
@@ -205,7 +205,7 @@ if __name__ == "__main__":
     #pairwise_manual_registration(source_pcd_name='scan04', target_pcd_name='scan05', distance_criteria=40, voxel_size=1, threshold=1.5) 
     #pairwise_manual_registration(source_pcd_name='scan05', target_pcd_name='scan06', distance_criteria=40, voxel_size=1, threshold=1.5) 
     #pairwise_manual_registration(source_pcd_name='scan06', target_pcd_name='scan07', distance_criteria=40, voxel_size=1, threshold=1.0) 
-    #pairwise_manual_registration(source_pcd_name='scan07', target_pcd_name='scan08', distance_criteria=40, voxel_size=1, threshold=1.5) 
+    pairwise_manual_registration(source_pcd_name='scan07', target_pcd_name='scan08', distance_criteria=40, voxel_size=1, threshold=1.5) 
     #pairwise_manual_registration(source_pcd_name='scan08', target_pcd_name='scan09', distance_criteria=40, voxel_size=1, threshold=1.5) 
     #pairwise_manual_registration(source_pcd_name='scan09', target_pcd_name='scan10', distance_criteria=40, voxel_size=1, threshold=1.5)
     #pairwise_manual_registration(source_pcd_name='scan10', target_pcd_name='scan11', distance_criteria=40, voxel_size=1, threshold=1.5)
@@ -213,4 +213,4 @@ if __name__ == "__main__":
     #pairwise_manual_registration(source_pcd_name='scan12', target_pcd_name='scan13', distance_criteria=40, voxel_size=1, threshold=1.5)
     #pairwise_manual_registration(source_pcd_name='scan13', target_pcd_name='scan14', distance_criteria=40, voxel_size=1, threshold=1.5)
     #pairwise_manual_registration(source_pcd_name='scan14', target_pcd_name='scan15', distance_criteria=40, voxel_size=1, threshold=1.5)
-    pairwise_manual_registration(source_pcd_name='scan15', target_pcd_name='scan16', distance_criteria=40, voxel_size=1, threshold=1.5)
+    #pairwise_manual_registration(source_pcd_name='scan15', target_pcd_name='scan16', distance_criteria=40, voxel_size=1, threshold=1.5)
